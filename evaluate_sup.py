@@ -31,12 +31,13 @@ def prepare_model(chkpt_dir, arch='mae_vit_large_patch16'):
     )
 
     # load model
-    # model = model.to('cpu')
-    checkpoint = torch.load(chkpt_dir)  # , map_location='cpu'
+    # Detect device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    checkpoint = torch.load(chkpt_dir, map_location=device)
     # TODO: check if there is need for strict false.
     msg = model.load_state_dict(checkpoint['model'], strict=False)
     print(msg)
-    model = model.to('cuda')
+    model = model.to(device)
     # switch to evaluation mode
     model.eval()
     return model
@@ -47,7 +48,9 @@ def get_scores(model_, imgs_):
     x = torch.tensor(imgs_)
 
     x = torch.einsum('nhwc->nchw', x)
-    x = x.to('cuda')
+    # Get device from model
+    device = next(model_.parameters()).device
+    x = x.to(device)
     result = model_(x.float())
     soft_result = torch.nn.functional.softmax(result, dim=1)
     return soft_result.detach().cpu().numpy()[:, 0]
@@ -63,10 +66,9 @@ def get_normal_images_paths():
             return glob.glob('/media/lili/SSD2/datasets/luna16/reconstructions/mae_luna16_patch_16_mask_ratio_0.75_unnorm/test/normal/*.pkl')
 
     elif args.dataset == 'brats':
-        if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/reconstructions/mae_mask_ratio_0.75_800e/val/normal/*.pkl')
-        else:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/reconstructions/mae_mask_ratio_0.75_800e/test/normal/*.pkl')
+        # Updated paths for local reconstructions
+        split = 'val' if args.use_val else 'test'
+        return glob.glob(f'brats_reconstructions/{split}/normal/*.pkl')
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -80,10 +82,9 @@ def get_abnormal_images_paths():
             return glob.glob('/media/lili/SSD2/datasets/luna16/reconstructions/mae_luna16_patch_16_mask_ratio_0.75_unnorm/test/abnormal/*.pkl')
 
     elif args.dataset == 'brats':
-        if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/reconstructions/mae_mask_ratio_0.75_800e/val/abnormal/*.pkl')
-        else:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/reconstructions/mae_mask_ratio_0.75_800e/test/abnormal/*.pkl')
+        # Updated paths for local reconstructions
+        split = 'val' if args.use_val else 'test'
+        return glob.glob(f'brats_reconstructions/{split}/abnormal/*.pkl')
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 

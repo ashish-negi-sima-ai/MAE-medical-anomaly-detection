@@ -1,0 +1,9 @@
+brats_npy_data/*
+brats_reconstructions/*
+brats20_data/*
+brats20_training_h5/*
+brats20_validation_h5/*
+test_results/*
+*.pyc
+*.pth
+*.h5

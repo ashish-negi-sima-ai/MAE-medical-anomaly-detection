@@ -24,10 +24,11 @@ def prepare_model(chkpt_dir, arch='mae_vit_large_patch16'):
         patch_size = 16
 
     model = getattr(models_mae, arch)(img_size=img_size, patch_size=patch_size)
-    checkpoint = torch.load(chkpt_dir)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    checkpoint = torch.load(chkpt_dir, map_location=device)
     msg = model.load_state_dict(checkpoint['model'], strict=False)
     print(msg)
-    model = model.to('cuda')
+    model = model.to(device)
     return model
 
 
@@ -72,7 +73,8 @@ def get_reconstructions(model_, imgs_, idx):
     x = torch.tensor(imgs_)
 
     x = torch.einsum('nhwc->nchw', x)
-    x = x.to('cuda')
+    device = next(model_.parameters()).device
+    x = x.to(device)
     loss, result, mask = model_(x.float(), mask_ratio=args.mask_ratio, idx_masking=idx, is_testing=False)
     result = model_.unpatchify(result)
     result = torch.einsum('nchw->nhwc', result).detach().cpu()
@@ -122,10 +124,10 @@ def get_normal_images_paths():
         else:
             return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/test_unnorm/normal/*.npy')
     elif args.dataset == 'brats':
-        if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/split/val/normal/*.npy')
-        else:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/split/test/normal/*.npy')
+        # Updated paths for local data
+        base_path = 'brats_npy_data'
+        split = 'val' if args.use_val else 'test'
+        return glob.glob(f'{base_path}/{split}/normal/*.npy')
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -138,10 +140,10 @@ def get_abnormal_images_paths():
         else:
             return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/test_unnorm/abnormal/*.npy')
     elif args.dataset == 'brats':
-        if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/split/val/abnormal/*.npy')
-        else:
-            return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/split/test/abnormal/*.npy')
+        # Updated paths for local data
+        base_path = 'brats_npy_data'
+        split = 'val' if args.use_val else 'test'
+        return glob.glob(f'{base_path}/{split}/abnormal/*.npy')
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 

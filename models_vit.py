@@ -51,6 +51,11 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             outcome = x[:, 0]
 
         return outcome
+    
+    def forward(self, x):
+        x = self.forward_features(x)
+        x = self.head(x)
+        return x
 
 
 def vit_base_patch16(**kwargs):
