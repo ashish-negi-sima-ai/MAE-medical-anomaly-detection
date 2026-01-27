@@ -8,3 +8,4 @@ exported_onnx_models/*
 *.pyc
 *.pth
 *.h5
+token
