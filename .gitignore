@@ -4,6 +4,7 @@ brats20_data/*
 brats20_training_h5/*
 brats20_validation_h5/*
 test_results/*
+exported_onnx_models/*
 *.pyc
 *.pth
 *.h5
