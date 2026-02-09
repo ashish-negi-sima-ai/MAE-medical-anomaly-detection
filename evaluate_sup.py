@@ -106,7 +106,11 @@ def load_image(img_path_):
     diff = np.abs((img_ - recon_))[:, :, 0]
 
     image_np = np.expand_dims(diff, axis=2)
-    return image_np, -ssim(img_[:, :, 0], recon_[:, :, 0])
+    # Calculate data range for SSIM (max - min of the data)
+    data_range = max(img_[:, :, 0].max(), recon_[:, :, 0].max()) - min(img_[:, :, 0].min(), recon_[:, :, 0].min())
+    if data_range == 0:
+        data_range = 1.0  # Avoid division by zero
+    return image_np, -ssim(img_[:, :, 0], recon_[:, :, 0], data_range=data_range)
 
 
 def process_image(img_):

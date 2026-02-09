@@ -1,0 +1,55 @@
+name: mae-medical
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.8
+  
+  # PyTorch and CUDA (adjust pytorch-cuda version based on your GPU)
+  # For CUDA 11.8, use: pytorch-cuda=11.8
+  # For CUDA 11.7, use: pytorch-cuda=11.7
+  # For CUDA 11.3, use: pytorch-cuda=11.3
+  # For CPU only, remove pytorch-cuda and add cpuonly
+  - pytorch>=1.10.0
+  - torchvision>=0.11.0
+  - torchaudio
+  - pytorch-cuda=11.8  # Change this based on your CUDA version
+  
+  # Scientific computing via conda (faster than pip)
+  - numpy>=1.19.0
+  - matplotlib>=3.3.0
+  - scikit-learn>=0.24.0
+  
+  # HDF5 support
+  - h5py>=3.0.0
+  
+  # Pip dependencies (not available or better via pip)
+  - pip
+  - pip:
+      # CRITICAL: timm version 0.3.2 is explicitly required
+      - timm==0.3.2
+      
+      # Image processing
+      - Pillow>=8.0.0
+      - opencv-python>=4.5.0
+      - scikit-image>=0.18.0
+      - albumentations>=1.0.0
+      
+      # Medical imaging
+      - nibabel>=3.2.0
+      
+      # Utilities
+      - tqdm>=4.60.0
+      
+      # Optional: ONNX export (uncomment if needed)
+      # - onnx>=1.10.0
+      # - onnxruntime>=1.10.0
+      
+      # Optional: Development tools (uncomment if needed)
+      # - jupyter>=1.0.0
+      # - ipython>=7.0.0
+
+

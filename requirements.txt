@@ -1,0 +1,43 @@
+# MAE Medical Anomaly Detection - Requirements
+# Python >= 3.8 recommended
+
+# NOTE: PyTorch (torch, torchvision, torchaudio) should be installed via conda
+# for better CUDA compatibility. See setup_env.sh or SETUP.md for instructions.
+# If you need to install via pip, uncomment the lines below:
+# torch>=1.10.0
+# torchvision>=0.11.0
+
+# IMPORTANT: timm version 0.3.2 is explicitly required by the codebase
+timm==0.3.2
+
+# Scientific Computing
+numpy>=1.19.0
+
+# Image Processing
+Pillow>=8.0.0
+opencv-python>=4.5.0
+scikit-image>=0.18.0
+albumentations>=1.0.0
+
+# Medical Imaging Formats
+h5py>=3.0.0
+nibabel>=3.2.0
+
+# Machine Learning & Evaluation
+scikit-learn>=0.24.0
+
+# Visualization
+matplotlib>=3.3.0
+
+# Progress Bars & Utilities
+tqdm>=4.60.0
+
+# Optional: ONNX Export (uncomment if needed)
+# onnx>=1.10.0
+# onnxruntime>=1.10.0
+
+# Development Tools (optional)
+# jupyter>=1.0.0
+# ipython>=7.0.0
+
+
