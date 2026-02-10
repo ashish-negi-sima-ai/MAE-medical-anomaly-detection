@@ -8,7 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from skimage.metrics import structural_similarity as ssim
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import (roc_auc_score, precision_recall_curve, auc, 
+                             confusion_matrix, balanced_accuracy_score,
+                             precision_score, recall_score, f1_score)
 from sklearn.utils import shuffle
 from tqdm import tqdm
 
@@ -151,15 +153,71 @@ def get_auc(model_, paths, ground_truth_labels):
 
     pred_labels = np.array(pred_labels)
 
-    auc = roc_auc_score(ground_truth_labels, pred_labels)
-    print("AUC:", auc)
+    # Print dataset statistics
+    n_normal = np.sum(ground_truth_labels == 0)
+    n_abnormal = np.sum(ground_truth_labels == 1)
+    print("\n" + "="*60)
+    print("DATASET STATISTICS")
+    print("="*60)
+    print(f"Normal samples:   {n_normal:6d} ({100*n_normal/len(ground_truth_labels):.2f}%)")
+    print(f"Abnormal samples: {n_abnormal:6d} ({100*n_abnormal/len(ground_truth_labels):.2f}%)")
+    print(f"Total samples:    {len(ground_truth_labels):6d}")
+    print(f"Imbalance ratio:  1:{n_abnormal/max(n_normal, 1):.1f}")
+    
+    # Calculate ROC-AUC
+    roc_auc = roc_auc_score(ground_truth_labels, pred_labels)
+    
+    # Calculate Precision-Recall AUC (more robust for imbalanced data)
+    precision, recall, thresholds = precision_recall_curve(ground_truth_labels, pred_labels)
+    pr_auc = auc(recall, precision)
+    
+    # Find optimal threshold using F1 score
+    f1_scores = 2 * (precision[:-1] * recall[:-1]) / (precision[:-1] + recall[:-1] + 1e-10)
+    optimal_idx = np.argmax(f1_scores)
+    optimal_threshold = thresholds[optimal_idx]
+    
+    # Get predictions at optimal threshold
+    pred_binary = (pred_labels >= optimal_threshold).astype(int)
+    
+    # Calculate metrics at optimal threshold
+    tn, fp, fn, tp = confusion_matrix(ground_truth_labels, pred_binary).ravel()
+    balanced_acc = balanced_accuracy_score(ground_truth_labels, pred_binary)
+    precision_opt = precision_score(ground_truth_labels, pred_binary, zero_division=0)
+    recall_opt = recall_score(ground_truth_labels, pred_binary, zero_division=0)
+    f1_opt = f1_score(ground_truth_labels, pred_binary, zero_division=0)
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+    
+    # Print results
+    print("\n" + "="*60)
+    print("EVALUATION METRICS")
+    print("="*60)
+    print(f"ROC-AUC:            {roc_auc:.4f}")
+    print(f"PR-AUC:             {pr_auc:.4f}  ⭐ (Better for imbalanced data)")
+    print(f"Balanced Accuracy:  {balanced_acc:.4f}")
+    print()
+    print(f"Optimal Threshold:  {optimal_threshold:.4f}")
+    print(f"  Precision:        {precision_opt:.4f}")
+    print(f"  Recall:           {recall_opt:.4f}")
+    print(f"  F1-Score:         {f1_opt:.4f}")
+    print(f"  Sensitivity:      {sensitivity:.4f}")
+    print(f"  Specificity:      {specificity:.4f}")
+    
+    print("\n" + "="*60)
+    print("CONFUSION MATRIX (at optimal threshold)")
+    print("="*60)
+    print(f"                 Predicted")
+    print(f"                 Normal  Abnormal")
+    print(f"Actual Normal    {tn:6d}  {fp:6d}")
+    print(f"       Abnormal  {fn:6d}  {tp:6d}")
+    print("="*60)
 
     # compare_histogram(scores=pred_labels, classes=ground_truth_labels)
     # idx = ground_truth_labels == 0
     # plt.hist([pred_labels[idx], pred_labels[~idx]], color=['b', 'r'])
     # plt.show()
 
-    return auc
+    return roc_auc
 
 
 def compare_histogram(scores, classes, thresh=None, n_bins=64, log=False, name=''):
