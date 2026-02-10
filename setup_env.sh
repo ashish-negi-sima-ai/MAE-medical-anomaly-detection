@@ -1,12 +1,44 @@
 #!/bin/bash
 # Setup script for MAE Medical Anomaly Detection
 # This script creates a conda environment and installs all required dependencies
+#
+# USAGE:
+#   source ./setup_env.sh    (recommended - activates environment in current shell)
+#   OR
+#   ./setup_env.sh           (installs but requires manual activation after)
 
 set -e  # Exit on error
 
 echo "=========================================="
 echo "MAE Medical Anomaly Detection - Setup"
 echo "=========================================="
+echo ""
+
+# Detect if script is being sourced or executed
+SOURCED=0
+if [ -n "$ZSH_VERSION" ]; then
+    case $ZSH_EVAL_CONTEXT in *:file) SOURCED=1;; esac
+elif [ -n "$BASH_VERSION" ]; then
+    (return 0 2>/dev/null) && SOURCED=1
+else
+    case ${0##*/} in bash|dash|sh) SOURCED=1;; esac
+fi
+
+if [ $SOURCED -eq 0 ]; then
+    echo "⚠️  Note: Script is being executed (not sourced)"
+    echo "   The conda environment will be installed but not activated"
+    echo "   in the current shell."
+    echo ""
+    echo "   To have the environment activated automatically, run:"
+    echo "   source ./setup_env.sh"
+    echo ""
+    read -p "Continue anyway? (Y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        echo "Exiting. Please run: source ./setup_env.sh"
+        exit 0
+    fi
+fi
 echo ""
 
 # Configuration
@@ -200,9 +232,19 @@ echo "=========================================="
 echo "✓ Setup Complete!"
 echo "=========================================="
 echo ""
-echo "To activate the environment, run:"
-echo "  conda activate ${ENV_NAME}"
-echo ""
+
+# Activate environment if sourced, otherwise provide instructions
+if [ $SOURCED -eq 1 ]; then
+    echo "✓ Environment '${ENV_NAME}' is now active in your current shell!"
+    echo ""
+else
+    echo "To activate the environment, run:"
+    echo "  conda activate ${ENV_NAME}"
+    echo ""
+    echo "Or to avoid this step next time, source the script:"
+    echo "  source ./setup_env.sh"
+    echo ""
+fi
 echo "To verify GPU availability:"
 echo "  python -c \"import torch; print(torch.cuda.is_available())\""
 echo ""
