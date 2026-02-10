@@ -206,7 +206,29 @@ def save(imgs, reconstructions, used_paths, is_abnormal, iter_):
 
 
 def write_reconstructions(model_mae, paths, is_abnormal: bool = False, iter_: int = 0):
-
+    # Check which files already exist (for resume functionality)
+    base_dir = args.output_folder
+    if is_abnormal:
+        base_dir = os.path.join(base_dir, 'abnormal')
+    else:
+        base_dir = os.path.join(base_dir, 'normal')
+    
+    # Filter out already processed files
+    paths_to_process = []
+    skipped_count = 0
+    for path_ in paths:
+        short_filename = os.path.split(path_)[-1][:-4] + f'_{iter_}.pkl'
+        output_file = os.path.join(base_dir, short_filename)
+        if os.path.exists(output_file):
+            skipped_count += 1
+        else:
+            paths_to_process.append(path_)
+    
+    if skipped_count > 0:
+        print(f"Resuming: Skipping {skipped_count} already processed files, {len(paths_to_process)} remaining")
+    
+    paths = paths_to_process  # Update paths to only process remaining files
+    
     for start_index in tqdm(range(0, len(paths), args.batch_size)):
         imgs = []
         used_paths = []
