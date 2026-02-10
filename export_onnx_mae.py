@@ -497,15 +497,29 @@ if __name__ == '__main__':
     parser.add_argument('--opset-version', type=int, default=11,
                         help='ONNX opset version')
     parser.add_argument('--verify', action='store_true',
-                        help='Verify the exported ONNX model')
+                        help='Verify the exported ONNX model (recommended: use with --is-testing for meaningful comparison)')
     parser.add_argument('--check-deps', action='store_true',
                         help='Check dependencies and exit')
     parser.add_argument('--test-loading', action='store_true',
                         help='Test model loading and exit')
     parser.add_argument('--is-testing', action='store_true',
-                        help='Use grid masking instead of random masking')
+                        help='Use deterministic grid masking instead of random masking (required for accurate verification)')
     
     args = parser.parse_args()
+    
+    # Warn if using --verify without --is-testing
+    if args.verify and not args.is_testing:
+        print("\n⚠️  WARNING: You are using --verify without --is-testing")
+        print("   Verification will show large differences due to random masking.")
+        print("   For meaningful verification, either:")
+        print("   1. Add --is-testing flag to this command, OR")
+        print("   2. Use export_deterministic_mae.py instead")
+        print("")
+        response = input("Continue anyway? (y/N): ").strip().lower()
+        if response != 'y':
+            print("Exiting. Please rerun with --is-testing or use export_deterministic_mae.py")
+            sys.exit(0)
+        print("")
     
     # Check dependencies if requested
     if args.check_deps:
@@ -571,6 +585,10 @@ if __name__ == '__main__':
     print("\nExport completed successfully!")
     print("\nUsage examples:")
     print("# Export full MAE model for BRATS dataset:")
-    print(f"python export_onnx.py --model-path your_model.pth --output-path mae_model.onnx --dataset brats")
+    print(f"python export_onnx_mae.py --model-path your_model.pth --output-path mae_model.onnx --dataset brats")
+    print("# Export with deterministic masking and verification:")
+    print(f"python export_onnx_mae.py --model-path your_model.pth --output-path mae_model.onnx --dataset brats --is-testing --verify")
+    print("# Or use the dedicated deterministic export script:")
+    print(f"python export_deterministic_mae.py --model-path your_model.pth --output-path mae_model.onnx")
     print("# Export only encoder for LUNA16 dataset:")
-    print(f"python export_onnx.py --model-path your_model.pth --output-path mae_encoder.onnx --dataset luna16_unnorm --export-type encoder") 
+    print(f"python export_onnx_mae.py --model-path your_model.pth --output-path mae_encoder.onnx --dataset luna16_unnorm --export-type encoder") 

@@ -7,8 +7,10 @@
 # torch>=1.10.0
 # torchvision>=0.11.0
 
-# IMPORTANT: timm version 0.3.2 is explicitly required by the codebase
-timm==0.3.2
+# IMPORTANT: timm version updated for PyTorch 2.x compatibility
+# timm 0.3.2 is not compatible with PyTorch 2.x (uses removed torch._six module)
+# Using timm >= 0.9.0 for PyTorch 2.4.1 compatibility
+timm>=0.9.0
 
 # Scientific Computing
 numpy>=1.19.0
