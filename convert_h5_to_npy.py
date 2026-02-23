@@ -14,6 +14,8 @@ Usage:
     python convert_h5_to_npy.py
 """
 
+from __future__ import annotations
+
 import os
 import glob
 import numpy as np
