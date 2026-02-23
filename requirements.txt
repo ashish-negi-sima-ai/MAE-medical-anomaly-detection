@@ -41,5 +41,5 @@ tqdm>=4.60.0
 # Development Tools (optional)
 # jupyter>=1.0.0
 # ipython>=7.0.0
-
+onnxsim
 
