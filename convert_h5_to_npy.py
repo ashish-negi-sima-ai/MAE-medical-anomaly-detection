@@ -73,6 +73,15 @@ def main():
         os.makedirs(os.path.join(OUTPUT_DIR, sub_dir), exist_ok=True)
 
     # ── Step 3: Convert and place files ──────────────────────────────────────
+    # Pre-scan output dirs once into a set for O(1) resume checks (avoids
+    # thousands of individual stat() calls on slow portable storage).
+    existing_outputs: set[tuple[str, str]] = set()
+    for sub_dir in SPLIT_MAP.values():
+        d = os.path.join(OUTPUT_DIR, sub_dir)
+        if os.path.isdir(d):
+            for fname in os.listdir(d):
+                existing_outputs.add((sub_dir, fname))
+
     missing = []
     converted = 0
     skipped = 0
@@ -87,10 +96,7 @@ def main():
             continue
 
         # Skip entirely if all destination .npy files already exist (resume)
-        if all(
-            os.path.exists(os.path.join(OUTPUT_DIR, sub_dir, npy_fname))
-            for _, sub_dir in destinations
-        ):
+        if all((sub_dir, npy_fname) in existing_outputs for _, sub_dir in destinations):
             skipped += 1
             continue
 
