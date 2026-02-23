@@ -75,6 +75,7 @@ def main():
     # ── Step 3: Convert and place files ──────────────────────────────────────
     missing = []
     converted = 0
+    skipped = 0
 
     for npy_fname, destinations in tqdm(all_needed.items(), desc="Converting"):
         # Derive the corresponding H5 filename (replace .npy -> .h5)
@@ -83,6 +84,14 @@ def main():
 
         if not os.path.exists(h5_path):
             missing.append(h5_fname)
+            continue
+
+        # Skip entirely if all destination .npy files already exist (resume)
+        if all(
+            os.path.exists(os.path.join(OUTPUT_DIR, sub_dir, npy_fname))
+            for _, sub_dir in destinations
+        ):
+            skipped += 1
             continue
 
         # Convert once, then copy/save to each destination
@@ -97,6 +106,8 @@ def main():
         converted += 1
 
     # ── Summary ──────────────────────────────────────────────────────────────
+    if skipped:
+        print(f"[resume] Skipped {skipped} already-converted files.")
     print(f"\nDone! Converted {converted} H5 files to NPY.")
     if missing:
         print(f"[WARN] {len(missing)} H5 files were not found:")

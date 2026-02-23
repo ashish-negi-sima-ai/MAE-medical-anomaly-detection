@@ -204,7 +204,21 @@ def save(imgs, reconstructions, used_paths, is_abnormal, iter_):
             pickle.dump(info_, handle)
 
 
+def _output_pkl_path(path_, is_abnormal: bool, iter_: int) -> str:
+    """Return the expected output .pkl path for a given input image path."""
+    sub = 'abnormal' if is_abnormal else 'normal'
+    short_filename = os.path.split(path_)[-1][:-4] + f'_{iter_}.pkl'
+    return os.path.join(args.output_folder, sub, short_filename)
+
+
 def write_reconstructions(model_mae, paths, is_abnormal: bool = False, iter_: int = 0):
+
+    # Filter out paths whose output .pkl already exists (resume support)
+    remaining = [p for p in paths if not os.path.exists(_output_pkl_path(p, is_abnormal, iter_))]
+    skipped = len(paths) - len(remaining)
+    if skipped:
+        print(f"[resume] Skipping {skipped} already-generated reconstructions.")
+    paths = remaining
 
     for start_index in tqdm(range(0, len(paths), args.batch_size)):
         imgs = []
