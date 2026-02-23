@@ -31,7 +31,7 @@ def prepare_model(chkpt_dir, arch='mae_vit_large_patch16'):
     model = getattr(models_mae, arch)(img_size=img_size, patch_size=patch_size)
     # load model
     # model = model.to('cpu')
-    checkpoint = torch.load(chkpt_dir)
+    checkpoint = torch.load(chkpt_dir, weights_only=False)
     msg = model.load_state_dict(checkpoint['model'], strict=False)
     print(msg)
     model = model.to('cuda')

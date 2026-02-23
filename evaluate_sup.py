@@ -8,14 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from skimage.metrics import structural_similarity as ssim
-from sklearn.metrics import (roc_auc_score, precision_recall_curve, auc, 
-                             confusion_matrix, balanced_accuracy_score,
-                             precision_score, recall_score, f1_score)
+from sklearn.metrics import roc_auc_score
 from sklearn.utils import shuffle
 from tqdm import tqdm
 
 import models_vit
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASETS = ['brats', 'luna16_unnorm']
 
 
@@ -33,13 +32,12 @@ def prepare_model(chkpt_dir, arch='mae_vit_large_patch16'):
     )
 
     # load model
-    # Detect device
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    checkpoint = torch.load(chkpt_dir, map_location=device)
+    # model = model.to('cpu')
+    checkpoint = torch.load(chkpt_dir, weights_only=False)  # , map_location='cpu'
     # TODO: check if there is need for strict false.
     msg = model.load_state_dict(checkpoint['model'], strict=False)
     print(msg)
-    model = model.to(device)
+    model = model.to('cuda')
     # switch to evaluation mode
     model.eval()
     return model
@@ -50,9 +48,7 @@ def get_scores(model_, imgs_):
     x = torch.tensor(imgs_)
 
     x = torch.einsum('nhwc->nchw', x)
-    # Get device from model
-    device = next(model_.parameters()).device
-    x = x.to(device)
+    x = x.to('cuda')
     result = model_(x.float())
     soft_result = torch.nn.functional.softmax(result, dim=1)
     return soft_result.detach().cpu().numpy()[:, 0]
@@ -63,14 +59,15 @@ def get_normal_images_paths():
 
     if args.dataset == 'luna16_unnorm':
         if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/reconstructions/mae_luna16_patch_16_mask_ratio_0.75_unnorm/val/normal/*.pkl')
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/val/normal/*.pkl'))
         else:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/reconstructions/mae_luna16_patch_16_mask_ratio_0.75_unnorm/test/normal/*.pkl')
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/test/normal/*.pkl'))
 
     elif args.dataset == 'brats':
-        # Updated paths for local reconstructions
-        split = 'val' if args.use_val else 'test'
-        return glob.glob(f'brats_reconstructions/{split}/normal/*.pkl')
+        if args.use_val:
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/val/normal/*.pkl'))
+        else:
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/normal/*.pkl'))
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -79,14 +76,15 @@ def get_normal_images_paths():
 def get_abnormal_images_paths():
     if args.dataset == 'luna16_unnorm':
         if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/reconstructions/mae_luna16_patch_16_mask_ratio_0.75_unnorm/val/abnormal/*.pkl')
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/val/abnormal/*.pkl'))
         else:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/reconstructions/mae_luna16_patch_16_mask_ratio_0.75_unnorm/test/abnormal/*.pkl')
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/test/abnormal/*.pkl'))
 
     elif args.dataset == 'brats':
-        # Updated paths for local reconstructions
-        split = 'val' if args.use_val else 'test'
-        return glob.glob(f'brats_reconstructions/{split}/abnormal/*.pkl')
+        if args.use_val:
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/val/abnormal/*.pkl'))
+        else:
+            return glob.glob(os.path.join(BASE_DIR, 'output_folder/abnormal/*.pkl'))
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -108,11 +106,7 @@ def load_image(img_path_):
     diff = np.abs((img_ - recon_))[:, :, 0]
 
     image_np = np.expand_dims(diff, axis=2)
-    # Calculate data range for SSIM (max - min of the data)
-    data_range = max(img_[:, :, 0].max(), recon_[:, :, 0].max()) - min(img_[:, :, 0].min(), recon_[:, :, 0].min())
-    if data_range == 0:
-        data_range = 1.0  # Avoid division by zero
-    return image_np, -ssim(img_[:, :, 0], recon_[:, :, 0], data_range=data_range)
+    return image_np, -ssim(img_[:, :, 0], recon_[:, :, 0], data_range=1.0)
 
 
 def process_image(img_):
@@ -153,71 +147,15 @@ def get_auc(model_, paths, ground_truth_labels):
 
     pred_labels = np.array(pred_labels)
 
-    # Print dataset statistics
-    n_normal = np.sum(ground_truth_labels == 0)
-    n_abnormal = np.sum(ground_truth_labels == 1)
-    print("\n" + "="*60)
-    print("DATASET STATISTICS")
-    print("="*60)
-    print(f"Normal samples:   {n_normal:6d} ({100*n_normal/len(ground_truth_labels):.2f}%)")
-    print(f"Abnormal samples: {n_abnormal:6d} ({100*n_abnormal/len(ground_truth_labels):.2f}%)")
-    print(f"Total samples:    {len(ground_truth_labels):6d}")
-    print(f"Imbalance ratio:  1:{n_abnormal/max(n_normal, 1):.1f}")
-    
-    # Calculate ROC-AUC
-    roc_auc = roc_auc_score(ground_truth_labels, pred_labels)
-    
-    # Calculate Precision-Recall AUC (more robust for imbalanced data)
-    precision, recall, thresholds = precision_recall_curve(ground_truth_labels, pred_labels)
-    pr_auc = auc(recall, precision)
-    
-    # Find optimal threshold using F1 score
-    f1_scores = 2 * (precision[:-1] * recall[:-1]) / (precision[:-1] + recall[:-1] + 1e-10)
-    optimal_idx = np.argmax(f1_scores)
-    optimal_threshold = thresholds[optimal_idx]
-    
-    # Get predictions at optimal threshold
-    pred_binary = (pred_labels >= optimal_threshold).astype(int)
-    
-    # Calculate metrics at optimal threshold
-    tn, fp, fn, tp = confusion_matrix(ground_truth_labels, pred_binary).ravel()
-    balanced_acc = balanced_accuracy_score(ground_truth_labels, pred_binary)
-    precision_opt = precision_score(ground_truth_labels, pred_binary, zero_division=0)
-    recall_opt = recall_score(ground_truth_labels, pred_binary, zero_division=0)
-    f1_opt = f1_score(ground_truth_labels, pred_binary, zero_division=0)
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
-    
-    # Print results
-    print("\n" + "="*60)
-    print("EVALUATION METRICS")
-    print("="*60)
-    print(f"ROC-AUC:            {roc_auc:.4f}")
-    print(f"PR-AUC:             {pr_auc:.4f}  ⭐ (Better for imbalanced data)")
-    print(f"Balanced Accuracy:  {balanced_acc:.4f}")
-    print()
-    print(f"Optimal Threshold:  {optimal_threshold:.4f}")
-    print(f"  Precision:        {precision_opt:.4f}")
-    print(f"  Recall:           {recall_opt:.4f}")
-    print(f"  F1-Score:         {f1_opt:.4f}")
-    print(f"  Sensitivity:      {sensitivity:.4f}")
-    print(f"  Specificity:      {specificity:.4f}")
-    
-    print("\n" + "="*60)
-    print("CONFUSION MATRIX (at optimal threshold)")
-    print("="*60)
-    print(f"                 Predicted")
-    print(f"                 Normal  Abnormal")
-    print(f"Actual Normal    {tn:6d}  {fp:6d}")
-    print(f"       Abnormal  {fn:6d}  {tp:6d}")
-    print("="*60)
+    auc = roc_auc_score(ground_truth_labels, pred_labels)
+    print("AUC:", auc)
 
     # compare_histogram(scores=pred_labels, classes=ground_truth_labels)
     # idx = ground_truth_labels == 0
     # plt.hist([pred_labels[idx], pred_labels[~idx]], color=['b', 'r'])
     # plt.show()
 
-    return roc_auc
+    return auc
 
 
 def compare_histogram(scores, classes, thresh=None, n_bins=64, log=False, name=''):

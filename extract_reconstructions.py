@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 import models_mae
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASETS = ['brats', 'luna16_unnorm']
 
 
@@ -24,11 +25,10 @@ def prepare_model(chkpt_dir, arch='mae_vit_large_patch16'):
         patch_size = 16
 
     model = getattr(models_mae, arch)(img_size=img_size, patch_size=patch_size)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    checkpoint = torch.load(chkpt_dir, map_location=device)
+    checkpoint = torch.load(chkpt_dir, weights_only=False)
     msg = model.load_state_dict(checkpoint['model'], strict=False)
     print(msg)
-    model = model.to(device)
+    model = model.to('cuda')
     return model
 
 
@@ -73,8 +73,7 @@ def get_reconstructions(model_, imgs_, idx):
     x = torch.tensor(imgs_)
 
     x = torch.einsum('nhwc->nchw', x)
-    device = next(model_.parameters()).device
-    x = x.to(device)
+    x = x.to('cuda')
     loss, result, mask = model_(x.float(), mask_ratio=args.mask_ratio, idx_masking=idx, is_testing=False)
     result = model_.unpatchify(result)
     result = torch.einsum('nchw->nhwc', result).detach().cpu()
@@ -110,9 +109,9 @@ def get_reconstructions_multi(model_, imgs_):
 def get_normal_images_paths_train():
 
     if args.dataset == 'luna16_unnorm':
-        return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/train_unnorm/normal/*.npy')
+        return glob.glob(os.path.join(BASE_DIR, 'dataset/luna16/train_unnorm/normal/*.npy'))
     elif args.dataset == 'brats':
-        return glob.glob('/media/lili/SSD2/datasets/brats/BraTS2020_training_data/split/train/normal/*.npy')
+        return glob.glob(os.path.join(BASE_DIR, 'dataset/BraTS2020_training_data/split/train/normal/*.npy'))
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -120,14 +119,14 @@ def get_normal_images_paths_train():
 def get_normal_images_paths():
     if args.dataset == 'luna16_unnorm':
         if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/val_unnorm/normal/*.npy')
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/luna16/val_unnorm/normal/*.npy'))
         else:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/test_unnorm/normal/*.npy')
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/luna16/test_unnorm/normal/*.npy'))
     elif args.dataset == 'brats':
-        # Updated paths for local data
-        base_path = 'brats_npy_data'
-        split = 'val' if args.use_val else 'test'
-        return glob.glob(f'{base_path}/{split}/normal/*.npy')
+        if args.use_val:
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/BraTS2020_training_data/split/val/normal/*.npy'))
+        else:
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/BraTS2020_training_data/split/test/normal/*.npy'))
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -136,14 +135,14 @@ def get_normal_images_paths():
 def get_abnormal_images_paths():
     if args.dataset == 'luna16_unnorm':
         if args.use_val:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/val_unnorm/abnormal/*.npy')
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/luna16/val_unnorm/abnormal/*.npy'))
         else:
-            return glob.glob('/media/lili/SSD2/datasets/luna16/luna16/test_unnorm/abnormal/*.npy')
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/luna16/test_unnorm/abnormal/*.npy'))
     elif args.dataset == 'brats':
-        # Updated paths for local data
-        base_path = 'brats_npy_data'
-        split = 'val' if args.use_val else 'test'
-        return glob.glob(f'{base_path}/{split}/abnormal/*.npy')
+        if args.use_val:
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/BraTS2020_training_data/split/val/abnormal/*.npy'))
+        else:
+            return glob.glob(os.path.join(BASE_DIR, 'dataset/BraTS2020_training_data/split/test/abnormal/*.npy'))
     else:
         raise ValueError(f'Data set {args.dataset} not recognized.')
 
@@ -206,29 +205,7 @@ def save(imgs, reconstructions, used_paths, is_abnormal, iter_):
 
 
 def write_reconstructions(model_mae, paths, is_abnormal: bool = False, iter_: int = 0):
-    # Check which files already exist (for resume functionality)
-    base_dir = args.output_folder
-    if is_abnormal:
-        base_dir = os.path.join(base_dir, 'abnormal')
-    else:
-        base_dir = os.path.join(base_dir, 'normal')
-    
-    # Filter out already processed files
-    paths_to_process = []
-    skipped_count = 0
-    for path_ in paths:
-        short_filename = os.path.split(path_)[-1][:-4] + f'_{iter_}.pkl'
-        output_file = os.path.join(base_dir, short_filename)
-        if os.path.exists(output_file):
-            skipped_count += 1
-        else:
-            paths_to_process.append(path_)
-    
-    if skipped_count > 0:
-        print(f"Resuming: Skipping {skipped_count} already processed files, {len(paths_to_process)} remaining")
-    
-    paths = paths_to_process  # Update paths to only process remaining files
-    
+
     for start_index in tqdm(range(0, len(paths), args.batch_size)):
         imgs = []
         used_paths = []
