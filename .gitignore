@@ -10,3 +10,5 @@ exported_onnx_models/*
 *.h5
 token
 dataset/*
+*.pkl
+*.npy
