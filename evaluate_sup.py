@@ -56,6 +56,8 @@ def get_scores(model_, imgs_):
 
 # change it to match your own path.
 def get_normal_images_paths():
+    if args.output_folder:
+        return glob.glob(os.path.join(args.output_folder, 'normal/*.pkl'))
 
     if args.dataset == 'luna16_unnorm':
         if args.use_val:
@@ -74,6 +76,9 @@ def get_normal_images_paths():
 
 # change it to match your own path.
 def get_abnormal_images_paths():
+    if args.output_folder:
+        return glob.glob(os.path.join(args.output_folder, 'abnormal/*.pkl'))
+
     if args.dataset == 'luna16_unnorm':
         if args.use_val:
             return glob.glob(os.path.join(BASE_DIR, 'output_folder/val/abnormal/*.pkl'))
@@ -193,6 +198,9 @@ parser = argparse.ArgumentParser(description='PyTorch Medical Images')
 parser.add_argument('--model-path', type=str)
 parser.add_argument('--dataset', type=str)
 parser.add_argument('--batch-size', type=int, default=1)
+parser.add_argument('--output-folder', type=str, default=None,
+                    help='Folder containing normal/ and abnormal/ .pkl subfolders '
+                         '(overrides built-in default paths).')
 parser.add_argument('--use_val', action='store_true',
                     help='Test on val data.')
 parser.add_argument('--find_best', action='store_true',
