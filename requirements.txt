@@ -43,4 +43,5 @@ tqdm>=4.60.0
 # ipython>=7.0.0
 onnxsim
 onnxruntime
+onnxruntime-gpu
 
