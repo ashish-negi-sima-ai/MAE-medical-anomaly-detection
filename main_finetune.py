@@ -23,7 +23,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 import timm
 
-assert timm.__version__ == "0.3.2" # version check
+# Note: timm 0.3.2 is not compatible with PyTorch 2.x (removed torch._six)
+# timm >= 1.0.0 is not compatible with Python 3.8 (PEP 585 syntax)
+# Using timm 0.9.x for both PyTorch 2.x and Python 3.8 compatibility
 from timm.models.layers import trunc_normal_
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy

@@ -29,8 +29,8 @@ dependencies:
   # Pip dependencies (not available or better via pip)
   - pip
   - pip:
-      # CRITICAL: timm version 0.3.2 is explicitly required
-      - timm==0.3.2
+      # timm 0.9.x required: PyTorch 2.x compat (>= 0.9.0) + Python 3.8 compat (< 1.0.0)
+      - timm>=0.9.0,<1.0.0
       
       # Image processing
       - Pillow>=8.0.0

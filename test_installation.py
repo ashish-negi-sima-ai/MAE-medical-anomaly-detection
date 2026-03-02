@@ -47,20 +47,31 @@ def test_imports():
 
 
 def test_timm_version():
-    """Test that timm is the correct version (0.3.2)"""
+    """Test that timm is a compatible version (0.9.x for PyTorch 2.x + Python 3.8)"""
     print("="*60)
     print("Testing timm Version")
     print("="*60)
     
     try:
         import timm
-        version = timm.__version__
-        if version == "0.3.2":
-            print(f"✓ timm version is correct: {version}")
+        from packaging import version as pkg_version
+        ver = timm.__version__
+        parsed = pkg_version.parse(ver)
+        min_ver = pkg_version.parse("0.9.0")
+        max_ver = pkg_version.parse("1.0.0")
+        
+        if parsed >= min_ver and parsed < max_ver:
+            print(f"✓ timm version is compatible: {ver} (>= 0.9.0, < 1.0.0)")
             return 1, 0
+        elif parsed < min_ver:
+            print(f"✗ timm version is TOO OLD: {ver} (need >= 0.9.0 for PyTorch 2.x)")
+            print("  timm 0.3.2 is not compatible with PyTorch 2.x (uses removed torch._six)")
+            print("  Please run: pip install 'timm>=0.9.0,<1.0.0'")
+            return 0, 1
         else:
-            print(f"✗ timm version is INCORRECT: {version} (expected 0.3.2)")
-            print("  Please run: pip uninstall timm -y && pip install timm==0.3.2")
+            print(f"✗ timm version is TOO NEW: {ver} (need < 1.0.0 for Python 3.8)")
+            print("  timm >= 1.0.0 uses PEP 585 syntax (tuple[int,int]) requiring Python 3.9+")
+            print("  Please run: pip install 'timm>=0.9.0,<1.0.0'")
             return 0, 1
     except ImportError:
         print("✗ timm not installed")
@@ -295,7 +306,7 @@ def main():
         print()
         print("Common fixes:")
         print("  - Missing packages: pip install -r requirements.txt")
-        print("  - Wrong timm version: pip install timm==0.3.2")
+        print("  - Wrong timm version: pip install 'timm>=0.9.0,<1.0.0'")
         print("  - CUDA issues: Reinstall PyTorch with correct CUDA version")
         print()
         print("See SETUP.md for detailed troubleshooting.")
