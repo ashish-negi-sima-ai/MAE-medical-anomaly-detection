@@ -117,21 +117,6 @@ bash e2e_evaluate.sh
 
 This sequentially converts H5→NPY, extracts reconstructions, and evaluates AUROC.
 
-### 🔍 Single-Image Inference
-
-Run the full detect-and-classify pipeline on a single `.npy` brain slice:
-
-```bash
-python simple_inference.py \
-    --input brats_npy_data/test/abnormal/BraTS20_Training_001_slice_031.npy \
-    --mae-model models/brats_pretrained.pth \
-    --classifier-model models/brats_finetuned.pth \
-    --mask-ratio 0.75 --num-trials 4 \
-    --output result.png
-```
-
-The script loads the MAE and classifier, performs multi-trial reconstruction, computes SSIM, and outputs a visualization with the anomaly probability. Use `--no-viz` to suppress the plot. See `example_inference.sh` for batch examples.
-
 ### 📦 ONNX Export
 
 Both the MAE reconstruction model and the anomaly classifier can be exported to ONNX for deployment.
@@ -227,7 +212,6 @@ python3 evaluate_sup_onnx.py \
 | `extract_reconstructions.py` | Generate reconstructions for train/val/test splits |
 | `main_finetune.py` | Train the anomaly classifier on reconstruction errors |
 | `evaluate_sup.py` | Compute AUROC on test data (PyTorch) |
-| `simple_inference.py` | Single-image inference with visualization |
 | `convert_h5_to_npy.py` | BraTS2020 H5 → NPY conversion with split organization |
 | `setup_env.sh` | Interactive conda environment setup |
 | `test_installation.py` | Verify all dependencies and model creation |
