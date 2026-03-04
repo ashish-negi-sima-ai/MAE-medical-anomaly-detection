@@ -210,6 +210,10 @@ Add `--visualize` to display the original, reconstruction, and diff images side-
 ============================
 ```
 
+### ⚠️ Note on AUC vs. Classification Threshold
+
+AUROC is a **threshold-independent** metric — it measures the model's ability to *rank* abnormal samples higher than normal ones across all possible thresholds. A high AUC (e.g. 0.899) does **not** mean the default 0.5 softmax threshold will yield few false positives. In practice, the score distributions of normal and abnormal samples may overlap around 0.5, causing many normal images to be labelled as anomalous. To reduce false positives at inference time, compute the **optimal threshold** (e.g. Youden's J = argmax(TPR − FPR)) on a validation set and use that instead of the naïve 0.5 cutoff.
+
 ### 🚀 Results and trained models.
 
 
