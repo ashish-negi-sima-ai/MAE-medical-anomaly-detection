@@ -174,6 +174,42 @@ python3 evaluate_sup_onnx.py \
     --batch-size=1 --output-folder=output_folder_onnx
 ```
 
+#### Single-Image Inference
+
+To run the full pipeline (MAE reconstruction → anomaly classification) on a **single `.npy` file**:
+
+```bash
+python3 infer_single_onnx.py \
+    --input path/to/image.npy \
+    --mae-model exported_onnx_models/mae_brats_deterministic_grid_masking_simplified.onnx \
+    --cls-model exported_onnx_models/classifier_brats_split.onnx \
+    --dataset brats --num-trials 4
+```
+
+Add `--visualize` to display the original, reconstruction, and diff images side-by-side.
+
+**Example — normal scan:**
+```
+===== Inference Result =====
+  Input       : dataset/BraTS2020_training_data/split/test/normal/volume_2_slice_82.npy
+  SSIM        : 0.7428
+  Normal prob : 0.9512
+  Anomaly prob: 0.0488
+  Prediction  : normal
+============================
+```
+
+**Example — abnormal scan:**
+```
+===== Inference Result =====
+  Input       : dataset/BraTS2020_training_data/split/test/abnormal/volume_1_slice_30.npy
+  SSIM        : 0.8714
+  Normal prob : 0.0699
+  Anomaly prob: 0.9301
+  Prediction  : anomalous
+============================
+```
+
 ### 🚀 Results and trained models.
 
 
