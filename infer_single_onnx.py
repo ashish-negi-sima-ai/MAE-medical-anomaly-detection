@@ -10,11 +10,10 @@ Usage:
         --input image.npy \
         --mae-model exported_onnx_models/mae_brats_deterministic_grid_masking_simplified.onnx \
         --cls-model exported_onnx_models/classifier_brats_split.onnx \
-        --dataset brats --num-trials 4
+        --dataset brats
 """
 
 import argparse
-import os
 
 import numpy as np
 import onnxruntime as ort
@@ -59,44 +58,38 @@ def get_deterministic_mask(num_patches, seed=42):
 # Stage 1 – MAE reconstruction
 # ---------------------------------------------------------------------------
 
-def mae_reconstruct(session, img_nhwc, precomputed_mask, num_trials=4):
+def mae_reconstruct(session, img_nhwc, precomputed_mask):
     """
-    Run the MAE model *num_trials* times and return the averaged
-    im_paste (visible original patches + reconstructed masked patches).
+    Run the MAE model once and return im_paste
+    (visible original patches + reconstructed masked patches).
+
+    A single pass suffices because the mask is deterministic — every
+    forward pass produces identical output.
     """
     x = np.transpose(img_nhwc, (0, 3, 1, 2)).astype(np.float32)  # NCHW
     input_name = session.get_inputs()[0].name
 
-    results = None
-    for _ in range(num_trials):
-        outputs = session.run(None, {input_name: x})
-        reconstruction = outputs[0]  # (B, 1, H, W)
+    outputs = session.run(None, {input_name: x})
+    reconstruction = outputs[0]  # (B, 1, H, W)
 
-        # Determine mask
-        mask = precomputed_mask
-        if len(mask.shape) == 1:
-            mask = np.tile(mask, (x.shape[0], 1))
+    # Determine mask
+    mask = precomputed_mask
+    if len(mask.shape) == 1:
+        mask = np.tile(mask, (x.shape[0], 1))
 
-        B, _, H, W = x.shape
-        grid_h = H // PATCH_SIZE
-        grid_w = W // PATCH_SIZE
+    B, _, H, W = x.shape
+    grid_h = H // PATCH_SIZE
+    grid_w = W // PATCH_SIZE
 
-        # Expand patch-level mask → pixel-level mask
-        mask_px = mask.reshape(B, grid_h, grid_w)
-        mask_px = mask_px[:, :, :, np.newaxis, np.newaxis]
-        mask_px = np.tile(mask_px, (1, 1, 1, PATCH_SIZE, PATCH_SIZE))
-        mask_px = mask_px.transpose(0, 1, 3, 2, 4).reshape(B, H, W)
-        mask_px = mask_px[:, np.newaxis, :, :]  # (B, 1, H, W)
+    # Expand patch-level mask → pixel-level mask
+    mask_px = mask.reshape(B, grid_h, grid_w)
+    mask_px = mask_px[:, :, :, np.newaxis, np.newaxis]
+    mask_px = np.tile(mask_px, (1, 1, 1, PATCH_SIZE, PATCH_SIZE))
+    mask_px = mask_px.transpose(0, 1, 3, 2, 4).reshape(B, H, W)
+    mask_px = mask_px[:, np.newaxis, :, :]  # (B, 1, H, W)
 
-        im_paste = x * (1 - mask_px) + reconstruction * mask_px
-
-        if results is None:
-            results = im_paste
-        else:
-            results += im_paste
-
-    results = results / num_trials
-    return np.transpose(results, (0, 2, 3, 1))  # back to NHWC
+    im_paste = x * (1 - mask_px) + reconstruction * mask_px
+    return np.transpose(im_paste, (0, 2, 3, 1))  # back to NHWC
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +134,6 @@ def main():
     parser.add_argument("--dataset", type=str, default="brats",
                         choices=["brats", "luna16_unnorm"],
                         help="Dataset type (affects resize & normalization)")
-    parser.add_argument("--num-trials", type=int, default=4,
-                        help="Number of MAE forward passes to average")
     parser.add_argument("--visualize", action="store_true",
                         help="Show original, reconstruction, and diff images")
     args = parser.parse_args()
@@ -176,7 +167,7 @@ def main():
     num_patches = (img_size // PATCH_SIZE) ** 2
     mask = get_deterministic_mask(num_patches, seed=42)
 
-    recon = mae_reconstruct(mae_session, img_batch, mask, num_trials=args.num_trials)
+    recon = mae_reconstruct(mae_session, img_batch, mask)
     # recon shape: (1, H, W, 1)
 
     # --- Stage 2: classify the diff ---

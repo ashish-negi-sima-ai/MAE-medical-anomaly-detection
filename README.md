@@ -183,7 +183,7 @@ python3 infer_single_onnx.py \
     --input path/to/image.npy \
     --mae-model exported_onnx_models/mae_brats_deterministic_grid_masking_simplified.onnx \
     --cls-model exported_onnx_models/classifier_brats_split.onnx \
-    --dataset brats --num-trials 4
+    --dataset brats
 ```
 
 Add `--visualize` to display the original, reconstruction, and diff images side-by-side.
